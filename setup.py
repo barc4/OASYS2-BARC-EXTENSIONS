@@ -34,6 +34,7 @@ CLASSIFIERS = [
 
 INSTALL_REQUIRES = (
     "oasys2>=0.0.42",
+    "OASYS2-SHADOW4>=0.0.44",
     "shadow4>=0.1.84",
     "barc4beams",
     "barc4shadow",
@@ -42,6 +43,11 @@ INSTALL_REQUIRES = (
 PACKAGES = find_packages(exclude=("*.tests", "*.tests.*", "tests.*", "tests"))
 
 PACKAGE_DATA = {
+    "orangecontrib.barc.oasys.widgets.extension": [
+        "icons/*.png",
+        "icons/*.jpg",
+        "icons/*.svg",
+    ],
     "orangecontrib.barc.shadow4.widgets.extension": [
         "icons/*.png",
         "icons/*.jpg",

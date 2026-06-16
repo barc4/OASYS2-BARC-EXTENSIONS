@@ -1,4 +1,5 @@
 recursive-include orangecontrib *.py
+recursive-include orangecontrib/barc/oasys/widgets *.png *.svg *.ico *.jpg *.bmp
 recursive-include orangecontrib/barc/shadow4/widgets *.png *.svg *.ico *.jpg *.bmp
 
 include README.md
