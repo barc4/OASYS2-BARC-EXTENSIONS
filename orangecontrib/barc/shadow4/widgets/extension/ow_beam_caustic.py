@@ -13,19 +13,19 @@ from oasys2.widget.gui import MessageDialog, Styles
 from oasys2.widget.widget import OWWidget
 
 from barc4beams import Beam
-from barc4beams.viz import plot_beam, plot_divergence, plot_phase_space
+from barc4beams.viz import plot_caustic
 from orangecontrib.shadow4.util.shadow4_objects import ShadowData
 
 
 COLOR_MAPS = ["viridis", "plasma", "turbo", "magma", "terrain"]
 
 
-class OWBeamPlot(OWWidget):
-    name = "Beam Plot"
-    description = "Plot a barc4beams Beam"
+class OWBeamCaustic(OWWidget):
+    name = "Beam Caustic"
+    description = "Compute and plot a barc4beams caustic"
     icon = "icons/barc.png"
-    priority = 2
-    keywords = ["barc", "barc4beams", "beam", "plot", "divergence", "phase space"]
+    priority = 3
+    keywords = ["barc", "barc4beams", "beam", "caustic", "plot"]
 
     want_main_area = 1
 
@@ -35,21 +35,20 @@ class OWBeamPlot(OWWidget):
     class Outputs:
         beam = Output("BARC Beam", Beam, default=True, auto_summary=False)
 
-    plot_type = Setting(0)
-    phase_direction = Setting(2)
-    mode = Setting(0)
-    aspect_ratio = Setting(True)
-    color = Setting(1)
-    use_x_range = Setting(False)
-    x_range_min = Setting(0.0)
-    x_range_max = Setting(0.0)
-    use_y_range = Setting(False)
-    y_range_min = Setting(0.0)
-    y_range_max = Setting(0.0)
+    which = Setting(2)
+    n_points = Setting(501)
+    start = Setting(-0.5)
+    finish = Setting(0.5)
+    aspect_ratio = Setting(False)
+    color = Setting(5)
+    use_z_range = Setting(False)
+    z_range_min = Setting(-0.5)
+    z_range_max = Setting(0.5)
+    use_xy_range = Setting(False)
+    xy_range_min = Setting(-100.0)
+    xy_range_max = Setting(100.0)
     bins = Setting(0)
-    z_offset = Setting(0.0)
-
-    MAX_SCATTER_RAYS = 20000
+    top_stat = Setting(0)
 
     def __init__(self):
         super().__init__()
@@ -66,83 +65,89 @@ class OWBeamPlot(OWWidget):
             orientation="horizontal",
             width=390,
         )
-        button = gui.button(button_box, self, "Plot Beam", callback=self.plot_results)
+        button = gui.button(button_box, self, "Plot Caustic", callback=self.plot_results)
         button.setStyleSheet(Styles.button_blue)
 
-        settings_box = oasysgui.widgetBox(
+        caustic_box = oasysgui.widgetBox(
+            self.controlArea,
+            "Caustic",
+            addSpace=True,
+            orientation="vertical",
+            width=390,
+        )
+        oasysgui.lineEdit(
+            caustic_box,
+            self,
+            "n_points",
+            "Number of planes",
+            labelWidth=180,
+            valueType=int,
+            orientation="horizontal",
+        )
+        oasysgui.lineEdit(
+            caustic_box,
+            self,
+            "start",
+            "Start [m]",
+            labelWidth=180,
+            valueType=float,
+            orientation="horizontal",
+        )
+        oasysgui.lineEdit(
+            caustic_box,
+            self,
+            "finish",
+            "Finish [m]",
+            labelWidth=180,
+            valueType=float,
+            orientation="horizontal",
+        )
+
+        plot_box = oasysgui.widgetBox(
             self.controlArea,
             "Plot",
             addSpace=True,
             orientation="vertical",
             width=390,
         )
-
         gui.comboBox(
-            settings_box,
+            plot_box,
             self,
-            "plot_type",
-            label="Plot",
-            labelWidth=160,
-            items=["Beam", "Divergence", "Phase Space"],
-            sendSelectedValue=False,
-            orientation="horizontal",
-            callback=self._update_visibility,
-        )
-
-        self.phase_direction_box = oasysgui.widgetBox(
-            settings_box,
-            "",
-            addSpace=False,
-            orientation="vertical",
-        )
-        gui.comboBox(
-            self.phase_direction_box,
-            self,
-            "phase_direction",
-            label="Direction",
-            labelWidth=160,
+            "which",
+            label="Plane",
+            labelWidth=180,
             items=["X", "Y", "Both"],
             sendSelectedValue=False,
             orientation="horizontal",
         )
-
+        gui.checkBox(plot_box, self, "aspect_ratio", "Aspect ratio")
         gui.comboBox(
-            settings_box,
-            self,
-            "mode",
-            label="Mode",
-            labelWidth=160,
-            items=["scatter", "hist2d"],
-            sendSelectedValue=False,
-            orientation="horizontal",
-        )
-        gui.checkBox(settings_box, self, "aspect_ratio", "Aspect ratio")
-        gui.comboBox(
-            settings_box,
+            plot_box,
             self,
             "color",
             label="Color",
-            labelWidth=160,
+            labelWidth=180,
             orientation="horizontal",
             items=COLOR_MAPS,
             sendSelectedValue=False,
         )
         oasysgui.lineEdit(
-            settings_box,
+            plot_box,
             self,
             "bins",
             "Number of Bins (0 = auto)",
-            labelWidth=160,
+            labelWidth=180,
             valueType=int,
             orientation="horizontal",
         )
-        oasysgui.lineEdit(
-            settings_box,
+        gui.comboBox(
+            plot_box,
             self,
-            "z_offset",
-            "Z offset [m]",
-            labelWidth=160,
-            valueType=float,
+            "top_stat",
+            label="Top panel",
+            labelWidth=180,
+            items=["None", "FWHM", "STD"],
+            sendSelectedValue=False,
             orientation="horizontal",
         )
 
@@ -153,44 +158,44 @@ class OWBeamPlot(OWWidget):
             orientation="vertical",
             width=390,
         )
-        gui.checkBox(range_box, self, "use_x_range", "Set X range", callback=self._update_visibility)
-        self.x_range_box = oasysgui.widgetBox(range_box, "", addSpace=False, orientation="vertical")
+        gui.checkBox(range_box, self, "use_z_range", "Set Z range", callback=self._update_visibility)
+        self.z_range_box = oasysgui.widgetBox(range_box, "", addSpace=False, orientation="vertical")
         oasysgui.lineEdit(
-            self.x_range_box,
+            self.z_range_box,
             self,
-            "x_range_min",
-            "X min",
-            labelWidth=160,
+            "z_range_min",
+            "Z min [m]",
+            labelWidth=180,
             valueType=float,
             orientation="horizontal",
         )
         oasysgui.lineEdit(
-            self.x_range_box,
+            self.z_range_box,
             self,
-            "x_range_max",
-            "X max",
-            labelWidth=160,
+            "z_range_max",
+            "Z max [m]",
+            labelWidth=180,
             valueType=float,
             orientation="horizontal",
         )
 
-        gui.checkBox(range_box, self, "use_y_range", "Set Y range", callback=self._update_visibility)
-        self.y_range_box = oasysgui.widgetBox(range_box, "", addSpace=False, orientation="vertical")
+        gui.checkBox(range_box, self, "use_xy_range", "Set X/Y range", callback=self._update_visibility)
+        self.xy_range_box = oasysgui.widgetBox(range_box, "", addSpace=False, orientation="vertical")
         oasysgui.lineEdit(
-            self.y_range_box,
+            self.xy_range_box,
             self,
-            "y_range_min",
-            "Y min",
-            labelWidth=160,
+            "xy_range_min",
+            "X/Y min [um]",
+            labelWidth=180,
             valueType=float,
             orientation="horizontal",
         )
         oasysgui.lineEdit(
-            self.y_range_box,
+            self.xy_range_box,
             self,
-            "y_range_max",
-            "Y max",
-            labelWidth=160,
+            "xy_range_max",
+            "X/Y max [um]",
+            labelWidth=180,
             valueType=float,
             orientation="horizontal",
         )
@@ -216,61 +221,52 @@ class OWBeamPlot(OWWidget):
 
             self._beam = self._beam_from_shadow_data(self._shadow_data)
 
-            mode = self._plot_mode()
-            if mode == "scatter" and self._good_rays_count(self._beam) > self.MAX_SCATTER_RAYS:
-                MessageDialog.message(
-                    parent=self,
-                    title="Large Scatter Plot",
-                    type="warning",
-                    message=(
-                        "More than 20000 good rays are available. "
-                        "Scatter mode is too heavy for the GUI; defaulting to hist2d."
-                    ),
-                )
-                mode = "hist2d"
-                self.mode = 1
+            n_points = int(self.n_points)
+            if n_points < 2:
+                raise ValueError("Number of planes must be at least 2.")
+
+            if self.start >= self.finish:
+                raise ValueError("Start must be smaller than finish.")
+
+            caustic = self._beam.caustic(
+                n_points=n_points,
+                start=float(self.start),
+                finish=float(self.finish),
+            )
 
             self._clear_plots()
 
-            common_kwargs = {
-                "mode": mode,
-                "aspect_ratio": bool(self.aspect_ratio),
-                "color": int(self.color),
-                "x_range": self._range_or_none(self.use_x_range, self.x_range_min, self.x_range_max),
-                "y_range": self._range_or_none(self.use_y_range, self.y_range_min, self.y_range_max),
-                "bins": self._bins_or_none(),
-                "z_offset": float(self.z_offset),
-                "plot": False,
-            }
+            which = self._which()
+            result = plot_caustic(
+                caustic,
+                which=which,
+                aspect_ratio=bool(self.aspect_ratio),
+                color=int(self.color),
+                z_range=self._range_or_none(self.use_z_range, self.z_range_min, self.z_range_max),
+                xy_range=self._range_or_none(self.use_xy_range, self.xy_range_min, self.xy_range_max),
+                bins=self._bins_or_none(),
+                top_stat=self._top_stat_or_none(),
+                plot=False,
+            )
 
-            df = self._beam.df
-
-            if self.plot_type == 0:
-                fig, _ = plot_beam(df, **common_kwargs)
-                self._add_figure_tab("Beam", fig)
-            elif self.plot_type == 1:
-                fig, _ = plot_divergence(df, **common_kwargs)
-                self._add_figure_tab("Divergence", fig)
+            if which == "both":
+                fig_x, _ = result[0]
+                fig_y, _ = result[1]
+                self._add_figure_tab("Caustic X", fig_x)
+                self._add_figure_tab("Caustic Y", fig_y)
             else:
-                direction = self._phase_direction()
-                result = plot_phase_space(df, direction=direction, **common_kwargs)
-                if direction == "both":
-                    (fig_x, _), (fig_y, _) = result
-                    self._add_figure_tab("Phase Space X", fig_x)
-                    self._add_figure_tab("Phase Space Y", fig_y)
-                else:
-                    fig, _ = result
-                    self._add_figure_tab(f"Phase Space {direction.upper()}", fig)
+                fig, _ = result
+                self._add_figure_tab(f"Caustic {which.upper()}", fig)
 
             self.Outputs.beam.send(self._beam)
-            self.setStatusMessage("Plot updated.")
+            self.setStatusMessage("Caustic plot updated.")
         except Exception as exception:
             self._beam = None
             self.Outputs.beam.send(None)
             self.setStatusMessage(str(exception))
             MessageDialog.message(
                 parent=self,
-                title="Plot Error",
+                title="Caustic Error",
                 type="critical",
                 message=str(exception),
             )
@@ -300,26 +296,29 @@ class OWBeamPlot(OWWidget):
             widget.deleteLater()
 
     def _update_visibility(self):
-        self.phase_direction_box.setVisible(self.plot_type == 2)
-        self.x_range_box.setVisible(bool(self.use_x_range))
-        self.y_range_box.setVisible(bool(self.use_y_range))
+        self.z_range_box.setVisible(bool(self.use_z_range))
+        self.xy_range_box.setVisible(bool(self.use_xy_range))
 
-    def _plot_mode(self):
-        return "scatter" if self.mode == 0 else "hist2d"
-
-    def _phase_direction(self):
-        return ["x", "y", "both"][self.phase_direction]
+    def _which(self):
+        return ["x", "y", "both"][self.which]
 
     def _bins_or_none(self):
         bins = int(self.bins)
         return None if bins <= 0 else bins
+
+    def _top_stat_or_none(self):
+        if self.top_stat == 1:
+            return "fwhm"
+        if self.top_stat == 2:
+            return "std"
+        return None
 
     @staticmethod
     def _beam_from_shadow_data(shadow_data):
         if shadow_data.beam is None:
             raise ValueError("Shadow Data does not contain a beam.")
 
-        shadow_beam = OWBeamPlot._copy_shadow_beam(shadow_data.beam)
+        shadow_beam = OWBeamCaustic._copy_shadow_beam(shadow_data.beam)
         return Beam(shadow_beam, code="s4")
 
     @staticmethod
@@ -338,15 +337,6 @@ class OWBeamPlot(OWWidget):
             raise ValueError("Range minimum must be smaller than range maximum.")
 
         return (float(minimum), float(maximum))
-
-    @staticmethod
-    def _good_rays_count(beam):
-        df = beam.df
-
-        if "lost_ray_flag" not in df.columns:
-            return len(df)
-
-        return int((df["lost_ray_flag"] == 0).sum())
 
 
 add_widget_parameters_to_module(__name__)
