@@ -9,7 +9,7 @@ from orangewidget.widget import Input, Output
 
 from oasys2.canvas.util.canvas_util import add_widget_parameters_to_module
 from oasys2.widget import gui as oasysgui
-from oasys2.widget.gui import MessageDialog, Styles
+from oasys2.widget.gui import ConfirmDialog, MessageDialog, Styles
 from oasys2.widget.widget import OWWidget
 
 from barc4beams import Beam
@@ -49,7 +49,8 @@ class OWBeamPlot(OWWidget):
     bins = Setting(0)
     z_offset = Setting(0.0)
 
-    MAX_SCATTER_RAYS = 20000
+    SCATTER_CONFIRM_RAYS = 20000
+    SCATTER_FORCE_HIST_RAYS = 50000
 
     def __init__(self):
         super().__init__()
@@ -216,26 +217,14 @@ class OWBeamPlot(OWWidget):
 
             self._beam = self._beam_from_shadow_data(self._shadow_data)
 
-            mode = self._plot_mode()
-            if mode == "scatter" and self._good_rays_count(self._beam) > self.MAX_SCATTER_RAYS:
-                MessageDialog.message(
-                    parent=self,
-                    title="Large Scatter Plot",
-                    type="warning",
-                    message=(
-                        "More than 20000 good rays are available. "
-                        "Scatter mode is too heavy for the GUI; defaulting to hist2d."
-                    ),
-                )
-                mode = "hist2d"
-                self.mode = 1
+            mode = self._resolve_plot_mode(self._beam)
 
             self._clear_plots()
 
             common_kwargs = {
                 "mode": mode,
                 "aspect_ratio": bool(self.aspect_ratio),
-                "color": int(self.color),
+                "color": self._color_index(),
                 "x_range": self._range_or_none(self.use_x_range, self.x_range_min, self.x_range_max),
                 "y_range": self._range_or_none(self.use_y_range, self.y_range_min, self.y_range_max),
                 "bins": self._bins_or_none(),
@@ -307,12 +296,60 @@ class OWBeamPlot(OWWidget):
     def _plot_mode(self):
         return "scatter" if self.mode == 0 else "hist2d"
 
+    def _resolve_plot_mode(self, beam):
+        mode = self._plot_mode()
+
+        if mode != "scatter":
+            return mode
+
+        good_rays = self._good_rays_count(beam)
+
+        if good_rays > self.SCATTER_FORCE_HIST_RAYS:
+            MessageDialog.message(
+                parent=self,
+                title="Large Scatter Plot",
+                type="warning",
+                message=(
+                    f"Scatter plotting {good_rays:,} good rays is too heavy for the GUI. "
+                    "Switching to hist2d."
+                ),
+            )
+            self.mode = 1
+            return "hist2d"
+
+        if good_rays > self.SCATTER_CONFIRM_RAYS:
+            proceed = ConfirmDialog.confirmed(
+                parent=self,
+                title="Large Scatter Plot",
+                message=(
+                    f"Scatter plotting {good_rays:,} good rays may be slow or make "
+                    "the GUI temporarily unresponsive.\n\nProceed with scatter?"
+                ),
+            )
+
+            if not proceed:
+                self.mode = 1
+                return "hist2d"
+
+        return "scatter"
+
     def _phase_direction(self):
         return ["x", "y", "both"][self.phase_direction]
 
     def _bins_or_none(self):
         bins = int(self.bins)
         return None if bins <= 0 else bins
+
+    def _color_index(self):
+        color = int(self.color)
+
+        if color < 0:
+            color = 0
+        elif color >= len(COLOR_MAPS):
+            color = len(COLOR_MAPS) - 1
+
+        self.color = color
+        return color + 1
 
     @staticmethod
     def _beam_from_shadow_data(shadow_data):

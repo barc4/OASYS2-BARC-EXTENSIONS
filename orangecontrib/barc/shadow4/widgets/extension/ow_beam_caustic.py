@@ -241,7 +241,7 @@ class OWBeamCaustic(OWWidget):
                 caustic,
                 which=which,
                 aspect_ratio=bool(self.aspect_ratio),
-                color=int(self.color),
+                color=self._color_index(),
                 z_range=self._range_or_none(self.use_z_range, self.z_range_min, self.z_range_max),
                 xy_range=self._range_or_none(self.use_xy_range, self.xy_range_min, self.xy_range_max),
                 bins=self._bins_or_none(),
@@ -312,6 +312,17 @@ class OWBeamCaustic(OWWidget):
         if self.top_stat == 2:
             return "std"
         return None
+
+    def _color_index(self):
+        color = int(self.color)
+
+        if color < 0:
+            color = 0
+        elif color >= len(COLOR_MAPS):
+            color = len(COLOR_MAPS) - 1
+
+        self.color = color
+        return color + 1
 
     @staticmethod
     def _beam_from_shadow_data(shadow_data):

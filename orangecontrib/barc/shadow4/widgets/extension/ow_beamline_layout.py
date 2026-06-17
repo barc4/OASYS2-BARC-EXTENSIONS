@@ -29,6 +29,8 @@ class OWBeamlineLayout(OWWidget):
         shadow_data = Input("Shadow Data", ShadowData, default=True, auto_summary=False)
 
     show_source = Setting(True)
+    show_experiment = Setting(True)
+    show_empty_elements = Setting(False)
     draw_to_scale = Setting(False)
 
     def __init__(self):
@@ -56,6 +58,8 @@ class OWBeamlineLayout(OWWidget):
             width=390,
         )
         gui.checkBox(settings_box, self, "show_source", "Show source")
+        gui.checkBox(settings_box, self, "show_experiment", "Show experiment")
+        gui.checkBox(settings_box, self, "show_empty_elements", "Show empty elements")
         gui.checkBox(settings_box, self, "draw_to_scale", "Draw to scale")
 
         self.plot_tabs = oasysgui.tabWidget(self.mainArea)
@@ -85,6 +89,8 @@ class OWBeamlineLayout(OWWidget):
             fig, _ = plot_beamline(
                 layout,
                 show_source=bool(self.show_source),
+                show_experiment=bool(self.show_experiment),
+                show_empty_elements=bool(self.show_empty_elements),
                 draw_to_scale=bool(self.draw_to_scale),
                 plot=False,
             )
