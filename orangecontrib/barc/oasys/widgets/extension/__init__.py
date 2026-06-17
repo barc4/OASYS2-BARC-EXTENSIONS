@@ -4,6 +4,6 @@ DESCRIPTION = "BARC widgets for OASYS"
 
 BACKGROUND = "#FAAC58"
 
-ICON = "icons/barc.png"
+ICON = "icons/circle-4.png"
 
 PRIORITY = 1.899

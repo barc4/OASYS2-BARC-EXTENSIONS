@@ -23,7 +23,7 @@ COLOR_MAPS = ["viridis", "plasma", "turbo", "magma", "terrain"]
 class OWBeamCaustic(OWWidget):
     name = "Beam Caustic"
     description = "Compute and plot a barc4beams caustic"
-    icon = "icons/target.png"
+    icon = "icons/signal-stream.png"
     priority = 3
     keywords = ["barc", "barc4beams", "beam", "caustic", "plot"]
 

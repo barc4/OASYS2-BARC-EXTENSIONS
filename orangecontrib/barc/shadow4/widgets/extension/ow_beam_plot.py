@@ -13,7 +13,14 @@ from oasys2.widget.gui import ConfirmDialog, MessageDialog, Styles
 from oasys2.widget.widget import OWWidget
 
 from barc4beams import Beam
-from barc4beams.viz import plot_beam, plot_divergence, plot_phase_space
+from barc4beams.viz import (
+    plot_beam,
+    plot_divergence,
+    plot_energy,
+    plot_energy_vs_intensity,
+    plot_intensity,
+    plot_phase_space,
+)
 from orangecontrib.shadow4.util.shadow4_objects import ShadowData
 
 
@@ -23,7 +30,7 @@ COLOR_MAPS = ["viridis", "plasma", "turbo", "magma", "terrain"]
 class OWBeamPlot(OWWidget):
     name = "Beam Plot"
     description = "Plot a barc4beams Beam"
-    icon = "icons/chart.png"
+    icon = "icons/chart-scatter.png"
     priority = 2
     keywords = ["barc", "barc4beams", "beam", "plot", "divergence", "phase space"]
 
@@ -84,7 +91,14 @@ class OWBeamPlot(OWWidget):
             "plot_type",
             label="Plot",
             labelWidth=160,
-            items=["Beam", "Divergence", "Phase Space"],
+            items=[
+                "Beam",
+                "Divergence",
+                "Phase Space",
+                "Energy",
+                "Intensity",
+                "Energy vs Intensity",
+            ],
             sendSelectedValue=False,
             orientation="horizontal",
             callback=self._update_visibility,
@@ -107,8 +121,14 @@ class OWBeamPlot(OWWidget):
             orientation="horizontal",
         )
 
-        gui.comboBox(
+        self.mode_box = oasysgui.widgetBox(
             settings_box,
+            "",
+            addSpace=False,
+            orientation="vertical",
+        )
+        gui.comboBox(
+            self.mode_box,
             self,
             "mode",
             label="Mode",
@@ -117,9 +137,23 @@ class OWBeamPlot(OWWidget):
             sendSelectedValue=False,
             orientation="horizontal",
         )
-        gui.checkBox(settings_box, self, "aspect_ratio", "Aspect ratio")
-        gui.comboBox(
+
+        self.aspect_ratio_box = oasysgui.widgetBox(
             settings_box,
+            "",
+            addSpace=False,
+            orientation="vertical",
+        )
+        gui.checkBox(self.aspect_ratio_box, self, "aspect_ratio", "Aspect ratio")
+
+        self.color_box = oasysgui.widgetBox(
+            settings_box,
+            "",
+            addSpace=False,
+            orientation="vertical",
+        )
+        gui.comboBox(
+            self.color_box,
             self,
             "color",
             label="Color",
@@ -147,15 +181,15 @@ class OWBeamPlot(OWWidget):
             orientation="horizontal",
         )
 
-        range_box = oasysgui.widgetBox(
+        self.range_box = oasysgui.widgetBox(
             self.controlArea,
             "Ranges",
             addSpace=True,
             orientation="vertical",
             width=390,
         )
-        gui.checkBox(range_box, self, "use_x_range", "Set X range", callback=self._update_visibility)
-        self.x_range_box = oasysgui.widgetBox(range_box, "", addSpace=False, orientation="vertical")
+        gui.checkBox(self.range_box, self, "use_x_range", "Set X range", callback=self._update_visibility)
+        self.x_range_box = oasysgui.widgetBox(self.range_box, "", addSpace=False, orientation="vertical")
         oasysgui.lineEdit(
             self.x_range_box,
             self,
@@ -175,8 +209,8 @@ class OWBeamPlot(OWWidget):
             orientation="horizontal",
         )
 
-        gui.checkBox(range_box, self, "use_y_range", "Set Y range", callback=self._update_visibility)
-        self.y_range_box = oasysgui.widgetBox(range_box, "", addSpace=False, orientation="vertical")
+        gui.checkBox(self.range_box, self, "use_y_range", "Set Y range", callback=self._update_visibility)
+        self.y_range_box = oasysgui.widgetBox(self.range_box, "", addSpace=False, orientation="vertical")
         oasysgui.lineEdit(
             self.y_range_box,
             self,
@@ -217,7 +251,7 @@ class OWBeamPlot(OWWidget):
 
             self._beam = self._beam_from_shadow_data(self._shadow_data)
 
-            mode = self._resolve_plot_mode(self._beam)
+            mode = self._resolve_plot_mode(self._beam) if self._uses_mode() else self._plot_mode()
 
             self._clear_plots()
 
@@ -240,7 +274,7 @@ class OWBeamPlot(OWWidget):
             elif self.plot_type == 1:
                 fig, _ = plot_divergence(df, **common_kwargs)
                 self._add_figure_tab("Divergence", fig)
-            else:
+            elif self.plot_type == 2:
                 direction = self._phase_direction()
                 result = plot_phase_space(df, direction=direction, **common_kwargs)
                 if direction == "both":
@@ -250,6 +284,17 @@ class OWBeamPlot(OWWidget):
                 else:
                     fig, _ = result
                     self._add_figure_tab(f"Phase Space {direction.upper()}", fig)
+            elif self.plot_type == 3:
+                fig, _ = plot_energy(df, bins=self._bins_or_none(), plot=False)
+                self._add_figure_tab("Energy", fig)
+            elif self.plot_type == 4:
+                fig, _ = plot_intensity(df, bins=self._bins_or_none(), plot=False)
+                self._add_figure_tab("Intensity", fig)
+            else:
+                energy_intensity_kwargs = dict(common_kwargs)
+                energy_intensity_kwargs.pop("z_offset")
+                fig, _ = plot_energy_vs_intensity(df, **energy_intensity_kwargs)
+                self._add_figure_tab("Energy vs Intensity", fig)
 
             self.Outputs.beam.send(self._beam)
             self.setStatusMessage("Plot updated.")
@@ -289,12 +334,23 @@ class OWBeamPlot(OWWidget):
             widget.deleteLater()
 
     def _update_visibility(self):
-        self.phase_direction_box.setVisible(self.plot_type == 2)
-        self.x_range_box.setVisible(bool(self.use_x_range))
-        self.y_range_box.setVisible(bool(self.use_y_range))
+        is_phase_space = self.plot_type == 2
+        is_1d = self.plot_type in (3, 4)
+        is_2d = not is_1d
+
+        self.phase_direction_box.setVisible(is_phase_space)
+        self.mode_box.setVisible(is_2d)
+        self.aspect_ratio_box.setVisible(is_2d)
+        self.color_box.setVisible(is_2d)
+        self.range_box.setVisible(is_2d)
+        self.x_range_box.setVisible(is_2d and bool(self.use_x_range))
+        self.y_range_box.setVisible(is_2d and bool(self.use_y_range))
 
     def _plot_mode(self):
         return "scatter" if self.mode == 0 else "hist2d"
+
+    def _uses_mode(self):
+        return self.plot_type in (0, 1, 2, 5)
 
     def _resolve_plot_mode(self, beam):
         mode = self._plot_mode()
