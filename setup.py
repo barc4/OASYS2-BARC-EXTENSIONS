@@ -38,6 +38,7 @@ INSTALL_REQUIRES = (
     "shadow4>=0.1.84",
     "barc4beams",
     "barc4shadow",
+    "joblib",
 )
 
 PACKAGES = find_packages(exclude=("*.tests", "*.tests.*", "tests.*", "tests"))
