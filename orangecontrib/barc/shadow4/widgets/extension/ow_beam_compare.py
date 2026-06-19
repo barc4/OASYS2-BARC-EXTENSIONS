@@ -15,7 +15,7 @@ from orangecontrib.shadow4.util.shadow4_objects import ShadowData
 class OWBeamCompare(OWWidget):
     name = "Beam Compare"
     description = "Compare two Shadow4 beams with barc4beams"
-    icon = "icons/equality.png"
+    icon = "icons/scales.png"
     priority = 2
     keywords = ["barc", "barc4beams", "beam", "compare", "shadow4"]
 

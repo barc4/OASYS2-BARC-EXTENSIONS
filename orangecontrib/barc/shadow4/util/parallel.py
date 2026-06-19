@@ -15,15 +15,16 @@ from shadow4.sources.s4_light_source_from_beamlines import S4LightSourceFromBeam
 
 def cpu_info_text():
     lines = [
-        "os.cpu_count(): %s" % os.cpu_count(),
-        "multiprocessing.cpu_count(): %s" % multiprocessing.cpu_count(),
-        "joblib.cpu_count(): %s" % joblib.cpu_count(),
+        "CPU availability:",
+        "    os.cpu_count(): %s" % os.cpu_count(),
+        "    multiprocessing.cpu_count(): %s" % multiprocessing.cpu_count(),
+        "    joblib.cpu_count(): %s" % joblib.cpu_count(),
     ]
 
     try:
-        lines.append("CPU affinity: %s" % len(os.sched_getaffinity(0)))
+        lines.append("    CPU affinity: %s" % len(os.sched_getaffinity(0)))
     except AttributeError:
-        lines.append("CPU affinity: not available on this OS")
+        lines.append("    CPU affinity: not available on this OS")
 
     return "\n".join(lines)
 
