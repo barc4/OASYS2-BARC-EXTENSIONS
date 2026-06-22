@@ -42,7 +42,7 @@ class OWParallel(OWWidget):
         shadow_data = Output("Shadow Data", ShadowData, default=True, auto_summary=False)
 
     number_of_repetitions = Setting(5)
-    number_of_rays = Setting(0)
+    number_of_rays = Setting(10000)
     n_jobs = Setting(-1)
     runner_script_file_name = Setting("parallel_runner_from_oasys.py")
 
@@ -77,7 +77,7 @@ class OWParallel(OWWidget):
             valueType=int,
             orientation="horizontal",
         )
-        oasysgui.lineEdit(
+        self.le_number_of_rays = oasysgui.lineEdit(
             settings_box,
             self,
             "number_of_rays",
@@ -123,15 +123,15 @@ class OWParallel(OWWidget):
         self.le_runner_script_file_name.setFixedWidth(240)
         gui.button(figure_box, self, "...", callback=self.select_runner_script_file)
 
-        info_box = oasysgui.widgetBox(
-            self.controlArea,
-            "Input",
-            addSpace=True,
-            orientation="vertical",
-            width=390,
-        )
-        gui.label(info_box, self, "All repetitions are recalculated from the input beamline.")
-        gui.label(info_box, self, "Set rays to 0 to use the source default.")
+        # info_box = oasysgui.widgetBox(
+        #     self.controlArea,
+        #     "Input",
+        #     addSpace=True,
+        #     orientation="vertical",
+        #     width=390,
+        # )
+        # gui.label(info_box, self, "All repetitions are recalculated from the input beamline.")
+        # gui.label(info_box, self, "Number of rays is pre-filled from the input light source.")
 
         self.run_output = oasysgui.textArea(height=560, width=760)
         output_box = gui.widgetBox(
@@ -147,6 +147,7 @@ class OWParallel(OWWidget):
     @Inputs.shadow_data
     def set_shadow_data(self, shadow_data):
         self._shadow_data = shadow_data
+        self._prefill_number_of_rays()
 
     def select_runner_script_file(self):
         self.le_runner_script_file_name.setText(
@@ -203,10 +204,7 @@ class OWParallel(OWWidget):
         print_cpu_info()
         print("")
         print("Number of repetitions:", number_of_repetitions)
-        if number_of_rays is None:
-            print("Number of rays: source default")
-        else:
-            print("Number of rays:", number_of_rays)
+        print("Number of rays:", number_of_rays)
         if n_jobs == -1:
             n_jobs = joblib.cpu_count()
         print("Number of cores:", n_jobs)
@@ -290,11 +288,11 @@ class OWParallel(OWWidget):
     def _validate_number_of_rays(self):
         number_of_rays = int(self.number_of_rays)
 
-        if number_of_rays < 0:
-            raise ValueError("Number of rays must be 0 or greater.")
+        if number_of_rays < 1:
+            raise ValueError("Number of rays must be at least 1.")
 
         self.number_of_rays = number_of_rays
-        return None if number_of_rays == 0 else number_of_rays
+        return number_of_rays
 
     def _validate_n_jobs(self):
         n_jobs = int(self.n_jobs)
@@ -339,6 +337,23 @@ class OWParallel(OWWidget):
             return file_name
 
         return os.path.abspath(file_name)
+
+    def _prefill_number_of_rays(self):
+        if self._shadow_data is None:
+            return
+
+        try:
+            light_source = self._shadow_data.beamline.get_light_source()
+            if hasattr(light_source, "get_nrays"):
+                number_of_rays = int(light_source.get_nrays())
+            else:
+                number_of_rays = int(self._shadow_data.beam.N)
+
+            if number_of_rays > 0:
+                self.number_of_rays = number_of_rays
+                self.le_number_of_rays.setText(str(number_of_rays))
+        except Exception:
+            return
 
 
 add_widget_parameters_to_module(__name__)

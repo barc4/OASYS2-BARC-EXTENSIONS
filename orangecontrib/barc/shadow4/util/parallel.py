@@ -38,7 +38,7 @@ def print_cpu_info():
 def seed_for_iteration(base_seed, iteration):
     if base_seed == 0:
         return 0
-    return int(base_seed + (iteration * 2))
+    return int(base_seed + ((iteration + 1) * 2))
 
 
 def concatenate_shadow_data(beamline, beam_list, footprint_list, seed_list, verbose=True):
@@ -103,6 +103,9 @@ def make_runner_module_from_s4beamline(beamline, module_path=None, verbose=False
 # Workers return seed, beam, footprint. Beamline entries are rebuilt in the parent process.
 
 def run_beamline(seed={default_seed}, nrays={default_nrays}):
+    if nrays is None:
+        nrays = {default_nrays}
+
 {body}
 
     if "footprint" not in locals():
