@@ -41,7 +41,8 @@ class OWParallel(OWWidget):
     class Outputs:
         shadow_data = Output("Shadow Data", ShadowData, default=True, auto_summary=False)
 
-    total_repetitions = Setting(5)
+    number_of_repetitions = Setting(5)
+    number_of_rays = Setting(0)
     n_jobs = Setting(-1)
     runner_script_file_name = Setting("parallel_runner_from_oasys.py")
 
@@ -70,8 +71,17 @@ class OWParallel(OWWidget):
         oasysgui.lineEdit(
             settings_box,
             self,
-            "total_repetitions",
-            "Total repetitions",
+            "number_of_repetitions",
+            "Number of repetitions",
+            labelWidth=190,
+            valueType=int,
+            orientation="horizontal",
+        )
+        oasysgui.lineEdit(
+            settings_box,
+            self,
+            "number_of_rays",
+            "Number of rays",
             labelWidth=190,
             valueType=int,
             orientation="horizontal",
@@ -120,8 +130,8 @@ class OWParallel(OWWidget):
             orientation="vertical",
             width=390,
         )
-        gui.label(info_box, self, "Total repetitions includes the incoming 0th beam.")
-        gui.label(info_box, self, "Parallel jobs = total repetitions - 1.")
+        gui.label(info_box, self, "All repetitions are recalculated from the input beamline.")
+        gui.label(info_box, self, "Set rays to 0 to use the source default.")
 
         self.run_output = oasysgui.textArea(height=560, width=760)
         output_box = gui.widgetBox(
@@ -158,15 +168,15 @@ class OWParallel(OWWidget):
 
         try:
             self._validate_input()
-            total_repetitions = self._validate_total_repetitions()
+            number_of_repetitions = self._validate_number_of_repetitions()
+            number_of_rays = self._validate_number_of_rays()
             n_jobs = self._validate_n_jobs()
-            n_parallel_runs = total_repetitions - 1
 
             self.progressBarInit()
             progress_started = True
 
             with contextlib.redirect_stdout(stream):
-                output_data = self._run(total_repetitions, n_parallel_runs, n_jobs)
+                output_data = self._run(number_of_repetitions, number_of_rays, n_jobs)
 
             log = stream.getvalue().strip()
             self.run_output.setText(log)
@@ -187,20 +197,21 @@ class OWParallel(OWWidget):
             if progress_started:
                 self.progressBarFinished()
 
-    def _run(self, total_repetitions, n_parallel_runs, n_jobs):
+    def _run(self, number_of_repetitions, number_of_rays, n_jobs):
         t_total = time.perf_counter()
 
         print_cpu_info()
         print("")
-        print("Total repetitions:", total_repetitions)
-        print("Parallel repetitions:", n_parallel_runs)
+        print("Number of repetitions:", number_of_repetitions)
+        if number_of_rays is None:
+            print("Number of rays: source default")
+        else:
+            print("Number of rays:", number_of_rays)
         if n_jobs == -1:
             n_jobs = joblib.cpu_count()
         print("Number of cores:", n_jobs)
 
         beamline = deepcopy(self._shadow_data.beamline)
-        beam = deepcopy(self._shadow_data.beam)
-        footprint = deepcopy(self._shadow_data.footprint)
 
         runner_path = make_runner_module_from_s4beamline(
             beamline,
@@ -212,12 +223,12 @@ class OWParallel(OWWidget):
         print("")
 
         base_seed = int(beamline.get_light_source().get_seed())
-        seed_list = [seed_for_iteration(base_seed, i) for i in range(n_parallel_runs)]
+        seed_list = [seed_for_iteration(base_seed, i) for i in range(number_of_repetitions)]
 
         self.progressBarSet(10)
         t_parallel = time.perf_counter()
         results = Parallel(n_jobs=n_jobs, backend="loky")(
-            delayed(runner_module.run_beamline)(seed)
+            delayed(runner_module.run_beamline)(seed=seed, nrays=number_of_rays)
             for seed in seed_list
         )
         parallel_elapsed = time.perf_counter() - t_parallel
@@ -230,9 +241,7 @@ class OWParallel(OWWidget):
         t_concatenate = time.perf_counter()
         beamline_acc, beam_acc, footprint_acc = concatenate_shadow_data(
             beamline,
-            beam,
             beam_list,
-            footprint,
             footprint_list,
             seed_list,
             verbose=True,
@@ -254,8 +263,6 @@ class OWParallel(OWWidget):
         print("Concatenation elapsed: %.3f s" % concatenate_elapsed)
         print("Total elapsed: %.3f s" % (time.perf_counter() - t_total))
         print("Accumulated rays:", beam_acc.N)
-        # print(beamline_acc.get_light_source().get_info())
-
         self.progressBarSet(100)
         return output_data
 
@@ -271,14 +278,23 @@ class OWParallel(OWWidget):
         if not str(self.runner_script_file_name).strip():
             raise ValueError("Runner script file name is empty.")
 
-    def _validate_total_repetitions(self):
-        total_repetitions = int(self.total_repetitions)
+    def _validate_number_of_repetitions(self):
+        number_of_repetitions = int(self.number_of_repetitions)
 
-        if total_repetitions < 1:
-            raise ValueError("Total repetitions must be at least 1.")
+        if number_of_repetitions < 1:
+            raise ValueError("Number of repetitions must be at least 1.")
 
-        self.total_repetitions = total_repetitions
-        return total_repetitions
+        self.number_of_repetitions = number_of_repetitions
+        return number_of_repetitions
+
+    def _validate_number_of_rays(self):
+        number_of_rays = int(self.number_of_rays)
+
+        if number_of_rays < 0:
+            raise ValueError("Number of rays must be 0 or greater.")
+
+        self.number_of_rays = number_of_rays
+        return None if number_of_rays == 0 else number_of_rays
 
     def _validate_n_jobs(self):
         n_jobs = int(self.n_jobs)

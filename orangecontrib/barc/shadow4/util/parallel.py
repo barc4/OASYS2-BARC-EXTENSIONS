@@ -22,7 +22,7 @@ def cpu_info_text():
     ]
 
     try:
-        lines.append("    CPU affinity: %s" % len(os.sched_getaffinity(0)))
+        lines.append("\n    CPU affinity: %s" % len(os.sched_getaffinity(0)))
     except AttributeError:
         lines.append("    CPU affinity: not available on this OS")
 
@@ -38,46 +38,33 @@ def print_cpu_info():
 def seed_for_iteration(base_seed, iteration):
     if base_seed == 0:
         return 0
+    return int(base_seed + (iteration * 2))
 
-    return int(base_seed + ((iteration + 1) * 2))
 
+def concatenate_shadow_data(beamline, beam_list, footprint_list, seed_list, verbose=True):
 
-def concatenate_shadow_data(beamline, beam, beam_list, footprint, footprint_list, seed_list, verbose=False):
-    bl = beamline.duplicate()
+    light_source_acc = S4LightSourceFromBeamlines(name='Accumulate Parallel Run')
 
-    beam_acc = beam.duplicate()
-    beam_acc.clean_lost_rays()
+    ntimes = len(seed_list)
+    for i in range(ntimes):
 
-    footprint_acc = None
-    if footprint is not None:
-        footprint_acc = footprint.duplicate()
-        footprint_acc.clean_lost_rays()
-
-    light_source_acc = S4LightSourceFromBeamlines(name="Accumulate Parallel Run")
-    light_source_acc.append_beamline(
-        bl,
-        id="beamline seed: %d" % bl.get_light_source().get_seed(),
-        weight=1.0,
-    )
-
-    for index, seed in enumerate(seed_list):
-        if verbose:
-            print("Iteration: ", index + 1)
-            print("seed: ", seed)
-
-        beam_acc.append_beam(beam_list[index])
-
-        if footprint_acc is not None and footprint_list[index] is not None:
-            footprint_acc.append_beam(footprint_list[index])
-
+        beam_list[i].clean_lost_rays()
+        footprint_list[i].clean_lost_rays()
+        
+        if i == 0:
+            beam_acc = beam_list[i].duplicate()
+            footprint_acc = footprint_list[i].duplicate()
+        else:
+            beam_acc.append_beam(beam_list[i])
+            footprint_acc.append_beam(footprint_list[i])
         bl_i = deepcopy(beamline)
-        bl_i.get_light_source().set_seed(seed)
+        bl_i.get_light_source().set_seed(seed_list[i])
+        light_source_acc.append_beamline(bl_i, 
+                                         id='beamline seed: %d' % seed_list[i],
+                                         weight=1.0)
 
-        light_source_acc.append_beamline(
-            bl_i,
-            id="beamline seed: %d" % bl_i.get_light_source().get_seed(),
-            weight=1.0,
-        )
+        if verbose:
+            print("Iteration %d: seed=%d, rays=%d" % (i, seed_list[i], beam_list[i].N))
 
     beamline_acc = S4Beamline()
     beamline_acc.set_light_source(light_source_acc)
