@@ -6,7 +6,7 @@ import os
 from setuptools import find_packages, setup
 
 NAME = "OASYS2-BARC-EXTENSIONS"
-VERSION = "0.0.1"
+VERSION = "2026.06.22"
 
 DESCRIPTION = "OASYS2 BARC extension widgets"
 README_FILE = os.path.join(os.path.dirname(__file__), "README.md")
