@@ -24,3 +24,9 @@ python -m pip install -e . --no-deps --no-binary :all:
 ```
 
 Restart OASYS2 after installation.
+
+---
+
+[![PyPI](https://img.shields.io/pypi/v/OASYS2-BARC-EXTENSIONS.svg)]([https://pypi.org/project/barc4beams/](https://pypi.org/project/OASYS2-BARC-EXTENSIONS/))
+[![License: CeCILL-2.1](https://img.shields.io/badge/license-CeCILL--2.1-blue.svg)](https://opensource.org/licenses/CECILL-2.1)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20793381.svg)](https://doi.org/10.5281/zenodo.20793381)
