@@ -1,7 +1,6 @@
 from AnyQt.QtWidgets import QWidget, QVBoxLayout
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from orangewidget import gui
 from orangewidget.settings import Setting
 from orangewidget.widget import Input
@@ -14,6 +13,7 @@ from oasys2.widget.widget import OWWidget
 from barc4shadow.beamline import s4_beamline_to_layout
 from barc4shadow.viz import plot_beamline
 from orangecontrib.shadow4.util.shadow4_objects import ShadowData
+from orangecontrib.barc.oasys.util.matplotlib_tools import SnapshotNavigationToolbar
 
 
 class OWBeamlineLayout(OWWidget):
@@ -110,13 +110,14 @@ class OWBeamlineLayout(OWWidget):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         canvas = FigureCanvas(figure)
-        toolbar = NavigationToolbar(canvas, tab)
+        toolbar = SnapshotNavigationToolbar(canvas, tab)
         layout.addWidget(toolbar)
         layout.addWidget(canvas)
         self.plot_tabs.addTab(tab, title)
         self._canvases.append(canvas)
         self._figures.append(figure)
         canvas.draw()
+        plt.close(figure)
 
     def _clear_plots(self):
         for figure in self._figures:
