@@ -14,7 +14,7 @@ from orangewidget.widget import Input, Output
 from oasys2.canvas.util.canvas_util import add_widget_parameters_to_module
 from oasys2.widget import gui as oasysgui
 from oasys2.widget.gui import MessageDialog, Styles
-from oasys2.widget.widget import OWWidget
+from oasys2.widget.widget import OWAction, OWWidget
 
 from orangecontrib.barc.shadow4.util.parallel import (
     concatenate_shadow_data,
@@ -54,6 +54,10 @@ class OWParallel(OWWidget):
         super().__init__()
 
         self._shadow_data = None
+
+        self.runaction = OWAction("Run Parallel", self)
+        self.runaction.triggered.connect(self.run_parallel)
+        self.addAction(self.runaction)
 
         button_box = oasysgui.widgetBox(
             self.controlArea,
