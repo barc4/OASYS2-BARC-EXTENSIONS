@@ -189,7 +189,6 @@ class OWBeamlineConfigs(OWWidget):
         self._canvases.append(canvas)
         self._figures.append(figure)
         canvas.draw()
-        plt.close(figure)
 
     def _clear_plots(self):
         for figure in self._figures:
