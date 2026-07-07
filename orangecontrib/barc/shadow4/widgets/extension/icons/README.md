@@ -12,3 +12,4 @@ Uicons by FLATICON - https://www.flaticon.com/uicons
 
 <a href="https://www.flaticon.com/free-icons/parallel" title="parallel icons">Parallel icons created by juicy_fish - Flaticon</a>
 
+<a href="https://www.flaticon.com/free-icons/python-file" title="python file icons">Python file icons created by Flat Icons - Flaticon</a>
