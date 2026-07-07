@@ -187,19 +187,13 @@ class OWParallel(OWWidget):
             return
 
         try:
-            runner_path = make_parallel_runner_module_from_s4beamline(
-                deepcopy(self._shadow_data.beamline),
+            code_text = deepcopy(self._shadow_data.beamline).to_python_code_parallel(
                 number_of_repetitions=int(self.number_of_repetitions),
                 number_of_rays=int(self.number_of_rays),
                 n_jobs=int(self.n_jobs),
                 output_file="s4_beam.h5",
             )
-            runner_path = pathlib.Path(runner_path)
-            self.shadow4_script.set_code(runner_path.read_text(encoding="utf-8"))
-            try:
-                runner_path.unlink()
-            except Exception:
-                pass
+            self.shadow4_script.set_code(code_text)
         except Exception as exception:
             self.shadow4_script.set_code(
                 "Problem in writing python script:\n%s" % str(exception)
