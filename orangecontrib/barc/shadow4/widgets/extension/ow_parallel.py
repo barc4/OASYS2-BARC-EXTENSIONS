@@ -18,8 +18,8 @@ from oasys2.widget.gui import MessageDialog, Styles
 from oasys2.widget.widget import OWAction, OWWidget
 from shadow4.tools.parallel import (
     cpu_info_text,
+    get_parallel_runner_prototype,
     load_runner_module,
-    validate_parallel_beamline,
 )
 from orangecontrib.shadow4.util.python_script import PythonScript
 from orangecontrib.shadow4.util.shadow4_objects import ShadowData
@@ -263,7 +263,7 @@ class OWParallel(OWWidget):
             raise ValueError("Shadow Data does not contain an S4 beamline.")
         if self._shadow_data.beamline.get_light_source() is None:
             raise ValueError("Shadow Data beamline does not contain a light source.")
-        validate_parallel_beamline(self._shadow_data.beamline)
+        get_parallel_runner_prototype(self._shadow_data.beamline)
 
     def _validate_number_of_repetitions(self):
         number_of_repetitions = int(self.number_of_repetitions)
@@ -374,12 +374,7 @@ class OWParallel(OWWidget):
             return
 
     def _prototype_light_source(self):
-        light_source = self._shadow_data.beamline.get_light_source()
-
-        if hasattr(light_source, "_beamlines") and len(light_source._beamlines) > 0:
-            return light_source._beamlines[0].get_light_source()
-
-        return light_source
+        return get_parallel_runner_prototype(self._shadow_data.beamline).get_light_source()
 
 
 add_widget_parameters_to_module(__name__)
