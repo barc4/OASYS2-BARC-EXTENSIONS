@@ -6,7 +6,7 @@ import os
 from setuptools import find_packages, setup
 
 NAME = "OASYS2-BARC-EXTENSIONS"
-VERSION = "2026.06.22"
+VERSION = "2026.07.09"
 
 DESCRIPTION = "OASYS2 BARC extension widgets"
 README_FILE = os.path.join(os.path.dirname(__file__), "README.md")
@@ -35,7 +35,7 @@ CLASSIFIERS = [
 INSTALL_REQUIRES = (
     "oasys2>=0.0.42",
     "OASYS2-SHADOW4>=0.0.44",
-    "shadow4>=0.1.84",
+    "shadow4>=0.1.87",
     "barc4beams",
     "barc4shadow",
     "joblib",
