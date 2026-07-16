@@ -22,6 +22,7 @@ KEYWORDS = [
     "x-ray optics",
     "oasys2",
     "shadow4",
+    "srw",
 ]
 
 CLASSIFIERS = [
@@ -35,10 +36,10 @@ CLASSIFIERS = [
 INSTALL_REQUIRES = (
     "oasys2>=0.0.42",
     "OASYS2-SHADOW4>=0.0.44",
+    "OASYS2-SRW>=1.0.15",
     "shadow4>=0.1.87",
-    "barc4beams",
-    "barc4shadow",
-    "joblib",
+    'barc4shadow>=2026.07.09',
+    'barc4beams>=2026.07.09',
 )
 
 PACKAGES = find_packages(exclude=("*.tests", "*.tests.*", "tests.*", "tests"))
@@ -54,6 +55,11 @@ PACKAGE_DATA = {
         "icons/*.jpg",
         "icons/*.svg",
     ],
+    "orangecontrib.barc.srw.widgets.extension": [
+        "icons/*.png",
+        "icons/*.jpg",
+        "icons/*.svg",
+    ],
 }
 
 ENTRY_POINTS = {
@@ -62,6 +68,7 @@ ENTRY_POINTS = {
     ),
     "oasys2.widgets": (
         "BARC Shadow4 = orangecontrib.barc.shadow4.widgets.extension",
+        "BARC SRW = orangecontrib.barc.srw.widgets.extension",
     ),
 }
 
