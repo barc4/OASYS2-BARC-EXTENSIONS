@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "OASYS2-BARC-EXTENSIONS"
+version = "2026.07.16"
+description = "OASYS2 BARC extension widgets"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "CECILL-2.1"
+license-files = ["LICENSE"]
+authors = [{ name = "Rafael Celestre", email = "rafael.celestre@esrf.eu" }]
+keywords = [
+    "ray tracing",
+    "x-ray optics",
+    "oasys2",
+    "shadow4",
+    "srw",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: X11 Applications :: Qt",
+    "Environment :: Plugins",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Intended Audience :: Science/Research",
+]
+dependencies = [
+    "oasys2>=0.0.42",
+    "OASYS2-SHADOW4>=0.0.44",
+    "OASYS2-SRW>=1.0.15",
+    "shadow4>=0.1.87",
+    "barc4shadow>=2026.07.16",
+    "barc4beams>=2026.07.09",
+]
+
+[project.urls]
+Homepage = "https://github.com/barc4/OASYS2-BARC-EXTENSIONS"
+Download = "https://github.com/barc4/OASYS2-BARC-EXTENSIONS"
+
+[project.entry-points."oasys2.addons"]
+BARC = "orangecontrib.barc"
+
+[project.entry-points."oasys2.widgets"]
+"BARC Shadow4" = "orangecontrib.barc.shadow4.widgets.extension"
+"BARC SRW" = "orangecontrib.barc.srw.widgets.extension"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = [
+    "*.tests",
+    "*.tests.*",
+    "tests.*",
+    "tests",
+]
+
+[tool.setuptools.package-data]
+"orangecontrib.barc.oasys.widgets.extension" = [
+    "icons/*.png",
+    "icons/*.jpg",
+    "icons/*.svg",
+]
+"orangecontrib.barc.shadow4.widgets.extension" = [
+    "icons/*.png",
+    "icons/*.jpg",
+    "icons/*.svg",
+]
+"orangecontrib.barc.srw.widgets.extension" = [
+    "icons/*.png",
+    "icons/*.jpg",
+    "icons/*.svg",
+]
