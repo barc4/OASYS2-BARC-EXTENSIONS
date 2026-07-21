@@ -15,7 +15,7 @@ from oasys2.widget.util import congruence
 from oasys2.widget.util.widget_objects import OasysThicknessErrorsData
 
 from syned.beamline.element_coordinates import ElementCoordinates
-from syned.beamline.shape import Ellipse, Rectangle
+from syned.beamline.shape import Ellipse, NumericalMesh, Rectangle
 
 from orangecontrib.shadow4.util.shadow4_objects import PreReflPreProcessorData
 from orangecontrib.shadow4.util.shadow4_util import ShadowCongruence, ShadowPhysics, ShadowPlot
@@ -40,10 +40,10 @@ except Exception:
 
 
 class OWThinTransmission(OWOpticalElement):
-    name = "Thin Transmission"
+    name = "Thin Element"
     description = "Shadow4 thin transmission element"
-    icon = "icons/refractor.png"
-    priority = 2.9
+    icon = "icons/thin_refractor.png"
+    priority = 3
     keywords = ["barc", "shadow4", "thin", "transmission", "thickness"]
 
     class Inputs:
@@ -470,10 +470,12 @@ class OWThinTransmission(OWOpticalElement):
         return S4ThinTransmission(
             name=name,
             boundary_shape=boundary_shape,
-            xx=None,
-            yy=None,
-            zz=None,
-            surface_data_file=self.surface_data_file,
+            thickness_mesh=NumericalMesh(
+                xx=None,
+                yy=None,
+                zz=None,
+                surface_data_file=self.surface_data_file,
+            ),
             material=self.material,
             density=self.density,
             ri_calculation_mode=self.ri_calculation_mode,
