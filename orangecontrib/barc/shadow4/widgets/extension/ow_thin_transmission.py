@@ -24,6 +24,10 @@ from orangecontrib.shadow4.widgets.gui.ow_optical_element import (
     OWOpticalElement,
     SUBTAB_INNER_BOX_WIDTH,
 )
+from orangecontrib.shadow4.widgets.gui.ow_optical_element_with_surface_shape import (
+    ShowImageErrorDataFileDialog,
+    ShowSurfaceErrorDataFileDialog,
+)
 
 from barc4shadow.s4_thin_element import S4ThinTransmission, S4ThinTransmissionElement
 
@@ -172,7 +176,23 @@ class OWThinTransmission(OWOpticalElement):
             valueType=str,
             orientation="horizontal",
         )
-        gui.button(file_box, self, "...", callback=self.select_surface_data_file)
+        gui.button(file_box, self, "...", callback=self.select_surface_data_file, width=30)
+        gui.button(
+            file_box,
+            self,
+            "View Surf",
+            callback=self.view_surface_data_file,
+            width=65,
+            tooltip="Render data in surface mode [slow]",
+        )
+        gui.button(
+            file_box,
+            self,
+            "View Img",
+            callback=self.view_image_data_file,
+            width=65,
+            tooltip="Render data in image mode [slow]",
+        )
 
         gui.comboBox(
             box,
@@ -376,6 +396,20 @@ class OWThinTransmission(OWOpticalElement):
                 file_extension_filter="Data Files (*.h5 *.hdf5 *.hdf)",
             )
         )
+
+    def view_surface_data_file(self):
+        try:
+            dialog = ShowSurfaceErrorDataFileDialog(parent=self, file_name=self.surface_data_file)
+            dialog.show()
+        except Exception as exception:
+            self.prompt_exception(exception)
+
+    def view_image_data_file(self):
+        try:
+            dialog = ShowImageErrorDataFileDialog(parent=self, file_name=self.surface_data_file)
+            dialog.show()
+        except Exception as exception:
+            self.prompt_exception(exception)
 
     def select_file_prerefl(self):
         self.le_file_prerefl.setText(
