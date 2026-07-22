@@ -15,7 +15,7 @@ from oasys2.widget.util import congruence
 from oasys2.widget.util.widget_objects import OasysThicknessErrorsData
 
 from syned.beamline.element_coordinates import ElementCoordinates
-from syned.beamline.shape import Ellipse, Rectangle
+from syned.beamline.shape import Ellipse, NumericalMesh, Rectangle
 
 from orangecontrib.shadow4.util.shadow4_objects import PreReflPreProcessorData
 from orangecontrib.shadow4.util.shadow4_util import ShadowCongruence, ShadowPhysics, ShadowPlot
@@ -23,6 +23,10 @@ from orangecontrib.shadow4.widgets.gui.ow_optical_element import (
     NO_FILE_SPECIFIED,
     OWOpticalElement,
     SUBTAB_INNER_BOX_WIDTH,
+)
+from orangecontrib.shadow4.widgets.gui.ow_optical_element_with_surface_shape import (
+    ShowImageErrorDataFileDialog,
+    ShowSurfaceErrorDataFileDialog,
 )
 
 from barc4shadow.s4_thin_element import S4ThinTransmission, S4ThinTransmissionElement
@@ -36,10 +40,10 @@ except Exception:
 
 
 class OWThinTransmission(OWOpticalElement):
-    name = "Thin Transmission"
+    name = "Thin Element"
     description = "Shadow4 thin transmission element"
-    icon = "icons/refractor.png"
-    priority = 2.9
+    icon = "icons/thin_refractor.png"
+    priority = 3
     keywords = ["barc", "shadow4", "thin", "transmission", "thickness"]
 
     class Inputs:
@@ -172,7 +176,23 @@ class OWThinTransmission(OWOpticalElement):
             valueType=str,
             orientation="horizontal",
         )
-        gui.button(file_box, self, "...", callback=self.select_surface_data_file)
+        gui.button(file_box, self, "...", callback=self.select_surface_data_file, width=30)
+        gui.button(
+            file_box,
+            self,
+            "View Surf",
+            callback=self.view_surface_data_file,
+            width=65,
+            tooltip="Render data in surface mode [slow]",
+        )
+        gui.button(
+            file_box,
+            self,
+            "View Img",
+            callback=self.view_image_data_file,
+            width=65,
+            tooltip="Render data in image mode [slow]",
+        )
 
         gui.comboBox(
             box,
@@ -377,6 +397,20 @@ class OWThinTransmission(OWOpticalElement):
             )
         )
 
+    def view_surface_data_file(self):
+        try:
+            dialog = ShowSurfaceErrorDataFileDialog(parent=self, file_name=self.surface_data_file)
+            dialog.show()
+        except Exception as exception:
+            self.prompt_exception(exception)
+
+    def view_image_data_file(self):
+        try:
+            dialog = ShowImageErrorDataFileDialog(parent=self, file_name=self.surface_data_file)
+            dialog.show()
+        except Exception as exception:
+            self.prompt_exception(exception)
+
     def select_file_prerefl(self):
         self.le_file_prerefl.setText(
             oasysgui.selectFileFromDialog(
@@ -436,10 +470,12 @@ class OWThinTransmission(OWOpticalElement):
         return S4ThinTransmission(
             name=name,
             boundary_shape=boundary_shape,
-            xx=None,
-            yy=None,
-            zz=None,
-            surface_data_file=self.surface_data_file,
+            thickness_mesh=NumericalMesh(
+                xx=None,
+                yy=None,
+                zz=None,
+                surface_data_file=self.surface_data_file,
+            ),
             material=self.material,
             density=self.density,
             ri_calculation_mode=self.ri_calculation_mode,

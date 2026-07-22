@@ -21,7 +21,7 @@ class OWBeamlineLayout(OWWidget):
     name = "Beamline Layout"
     description = "Plot a SHADOW4 beamline layout with barc4shadow"
     icon = "icons/uicons_progress-bar-dotted-line-half.png"
-    priority = 4
+    priority = 5
     keywords = ["barc", "barc4shadow", "beamline", "layout", "shadow4"]
 
     want_main_area = 1
