@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 import numpy
 from AnyQt.QtWidgets import QMessageBox
@@ -12,6 +13,7 @@ from dabax.dabax_xraylib import DabaxXraylib
 from oasys2.canvas.util.canvas_util import add_widget_parameters_to_module
 from oasys2.widget import gui as oasysgui
 from oasys2.widget.util import congruence
+from oasys2.widget.util.widget_util import write_surface_file
 from oasys2.widget.util.widget_objects import OasysThicknessErrorsData
 
 from syned.beamline.element_coordinates import ElementCoordinates
@@ -64,6 +66,9 @@ class OWThinTransmission(OWOpticalElement):
         )
 
     surface_data_file = Setting(NO_FILE_SPECIFIED)
+    thickness_scaling = Setting(1.0)
+    coordinate_scaling = Setting(1.0)
+    invert_surface = Setting(0)
     shift_thickness_to_zero = Setting(0)
     apply_to_lost = Setting(1)
 
@@ -192,6 +197,21 @@ class OWThinTransmission(OWOpticalElement):
             callback=self.view_image_data_file,
             width=65,
             tooltip="Render data in image mode [slow]",
+        )
+        oasysgui.lineEdit(
+            box, self, "thickness_scaling", "Thickness scaling",
+            tooltip="thickness_scaling", labelWidth=250, valueType=float,
+            orientation="horizontal",
+        )
+        oasysgui.lineEdit(
+            box, self, "coordinate_scaling", "Coordinate scaling",
+            tooltip="coordinate_scaling", labelWidth=250, valueType=float,
+            orientation="horizontal",
+        )
+        gui.comboBox(
+            box, self, "invert_surface", label="Invert surface",
+            labelWidth=250, items=["No", "Yes"], sendSelectedValue=False,
+            orientation="horizontal", tooltip="invert_surface",
         )
 
         gui.comboBox(
@@ -399,15 +419,13 @@ class OWThinTransmission(OWOpticalElement):
 
     def view_surface_data_file(self):
         try:
-            dialog = ShowSurfaceErrorDataFileDialog(parent=self, file_name=self.surface_data_file)
-            dialog.show()
+            self._view_transformed_surface(ShowSurfaceErrorDataFileDialog)
         except Exception as exception:
             self.prompt_exception(exception)
 
     def view_image_data_file(self):
         try:
-            dialog = ShowImageErrorDataFileDialog(parent=self, file_name=self.surface_data_file)
-            dialog.show()
+            self._view_transformed_surface(ShowImageErrorDataFileDialog)
         except Exception as exception:
             self.prompt_exception(exception)
 
@@ -485,6 +503,9 @@ class OWThinTransmission(OWOpticalElement):
             dabax=dabax,
             apply_to_lost=self.apply_to_lost == 1,
             shift_thickness_to_zero=self.shift_thickness_to_zero == 1,
+            thickness_scaling=self.thickness_scaling,
+            coordinate_scaling=self.coordinate_scaling,
+            invert_surface=self.invert_surface == 1,
         )
 
     def get_beamline_element_instance(self):
@@ -495,6 +516,9 @@ class OWThinTransmission(OWOpticalElement):
             raise ValueError("No thickness map file specified.")
 
         congruence.checkFile(self.surface_data_file)
+        congruence.checkStrictlyPositiveNumber(
+            self.coordinate_scaling, "Coordinate scaling"
+        )
 
         if self.aperturing == 1:
             congruence.checkStrictlyPositiveNumber(self.slit_width_xaxis, "Aperture width")
@@ -515,6 +539,33 @@ class OWThinTransmission(OWOpticalElement):
                 self.le_surface_data_file.setText(self.surface_data_file)
             else:
                 QMessageBox.warning(self, "Warning", "No thickness files in input data", QMessageBox.Ok)
+
+    def _view_transformed_surface(self, dialog_class):
+        if self.surface_data_file in (None, "", NO_FILE_SPECIFIED):
+            raise ValueError("No thickness map file specified.")
+        optical_element = S4ThinTransmission(
+            thickness_mesh=NumericalMesh(
+                xx=None, yy=None, zz=None,
+                surface_data_file=self.surface_data_file,
+            ),
+            shift_thickness_to_zero=self.shift_thickness_to_zero == 1,
+            thickness_scaling=self.thickness_scaling,
+            coordinate_scaling=self.coordinate_scaling,
+            invert_surface=self.invert_surface == 1,
+        )
+        data = optical_element.get_thickness_map(validate=False)
+        temporary = tempfile.NamedTemporaryFile(suffix=".h5", delete=False)
+        temporary.close()
+        try:
+            write_surface_file(
+                data["profile"], data["x_axis"], data["y_axis"],
+                temporary.name, overwrite=True,
+            )
+            dialog = dialog_class(parent=self, file_name=temporary.name)
+        finally:
+            if os.path.exists(temporary.name):
+                os.remove(temporary.name)
+        dialog.show()
 
     @Inputs.prerefl_preprocessor_data
     def set_PreReflPreProcessorData(self, data):

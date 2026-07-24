@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from orangewidget import gui
 from orangewidget.settings import Setting
-from orangewidget.widget import Input, Output
+from orangewidget.widget import Input
 
 from oasys2.canvas.util.canvas_util import add_widget_parameters_to_module
 from oasys2.widget import gui as oasysgui
@@ -30,9 +30,6 @@ class OWBeamCaustic(OWWidget):
 
     class Inputs:
         shadow_data = Input("Shadow Data", ShadowData, default=True, auto_summary=False)
-
-    class Outputs:
-        beam = Output("BARC Beam", Beam, default=True, auto_summary=False)
 
     which = Setting(2)
     n_points = Setting(501)
@@ -227,11 +224,9 @@ class OWBeamCaustic(OWWidget):
                 fig, _ = result
                 self._add_figure_tab(f"Caustic {which.upper()}", fig)
 
-            self.Outputs.beam.send(self._beam)
             self.setStatusMessage("Caustic plot updated.")
         except Exception as exception:
             self._beam = None
-            self.Outputs.beam.send(None)
             self.setStatusMessage(str(exception))
             MessageDialog.message(
                 parent=self,

@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 import numpy
 from AnyQt.QtWidgets import QMessageBox
@@ -12,6 +13,7 @@ from dabax.dabax_xraylib import DabaxXraylib
 from oasys2.canvas.util.canvas_util import add_widget_parameters_to_module
 from oasys2.widget import gui as oasysgui
 from oasys2.widget.util import congruence
+from oasys2.widget.util.widget_util import write_surface_file
 from oasys2.widget.util.widget_objects import OasysThicknessErrorsData
 
 from syned.beamline.element_coordinates import ElementCoordinates
@@ -69,6 +71,12 @@ class OWMeshRefractor(OWOpticalElement):
 
     entrance_surface_data_file = Setting(NO_FILE_SPECIFIED)
     exit_surface_data_file = Setting(NO_FILE_SPECIFIED)
+    entrance_thickness_scaling = Setting(1.0)
+    entrance_coordinate_scaling = Setting(1.0)
+    entrance_invert_surface = Setting(0)
+    exit_thickness_scaling = Setting(1.0)
+    exit_coordinate_scaling = Setting(1.0)
+    exit_invert_surface = Setting(0)
     thickness = Setting(0.0)
     shift_thickness_to_zero = Setting(0)
 
@@ -171,49 +179,87 @@ class OWMeshRefractor(OWOpticalElement):
         )
 
         entrance_box = oasysgui.widgetBox(
-            box, "Entrance Surface", addSpace=True, orientation="horizontal"
+            box, "Entrance Surface", addSpace=True, orientation="vertical"
+        )
+        entrance_file_box = oasysgui.widgetBox(
+            entrance_box, "", addSpace=False, orientation="horizontal"
         )
         self.le_entrance_surface_data_file = oasysgui.lineEdit(
-            entrance_box, self, "entrance_surface_data_file", "File",
+            entrance_file_box, self, "entrance_surface_data_file", "File",
             tooltip="entrance_surface_data_file", labelWidth=50,
             valueType=str, orientation="horizontal",
         )
         gui.button(
-            entrance_box, self, "...",
+            entrance_file_box, self, "...",
             callback=self.select_entrance_surface_data_file, width=30,
         )
         gui.button(
-            entrance_box, self, "View Surf",
+            entrance_file_box, self, "View Surf",
             callback=self.view_entrance_surface_data_file, width=65,
             tooltip="Render entrance data in surface mode [slow]",
         )
         gui.button(
-            entrance_box, self, "View Img",
+            entrance_file_box, self, "View Img",
             callback=self.view_entrance_image_data_file, width=65,
             tooltip="Render entrance data in image mode [slow]",
         )
+        oasysgui.lineEdit(
+            entrance_box, self, "entrance_thickness_scaling",
+            "Thickness scaling", tooltip="entrance_thickness_scaling",
+            labelWidth=250, valueType=float, orientation="horizontal",
+        )
+        oasysgui.lineEdit(
+            entrance_box, self, "entrance_coordinate_scaling",
+            "Coordinate scaling", tooltip="entrance_coordinate_scaling",
+            labelWidth=250, valueType=float, orientation="horizontal",
+        )
+        gui.comboBox(
+            entrance_box, self, "entrance_invert_surface",
+            label="Invert surface", labelWidth=250, items=["No", "Yes"],
+            sendSelectedValue=False, orientation="horizontal",
+            tooltip="entrance_invert_surface",
+        )
 
         exit_box = oasysgui.widgetBox(
-            box, "Exit Surface", addSpace=True, orientation="horizontal"
+            box, "Exit Surface", addSpace=True, orientation="vertical"
+        )
+        exit_file_box = oasysgui.widgetBox(
+            exit_box, "", addSpace=False, orientation="horizontal"
         )
         self.le_exit_surface_data_file = oasysgui.lineEdit(
-            exit_box, self, "exit_surface_data_file", "File",
+            exit_file_box, self, "exit_surface_data_file", "File",
             tooltip="exit_surface_data_file", labelWidth=50,
             valueType=str, orientation="horizontal",
         )
         gui.button(
-            exit_box, self, "...",
+            exit_file_box, self, "...",
             callback=self.select_exit_surface_data_file, width=30,
         )
         gui.button(
-            exit_box, self, "View Surf",
+            exit_file_box, self, "View Surf",
             callback=self.view_exit_surface_data_file, width=65,
             tooltip="Render exit data in surface mode [slow]",
         )
         gui.button(
-            exit_box, self, "View Img",
+            exit_file_box, self, "View Img",
             callback=self.view_exit_image_data_file, width=65,
             tooltip="Render exit data in image mode [slow]",
+        )
+        oasysgui.lineEdit(
+            exit_box, self, "exit_thickness_scaling",
+            "Thickness scaling", tooltip="exit_thickness_scaling",
+            labelWidth=250, valueType=float, orientation="horizontal",
+        )
+        oasysgui.lineEdit(
+            exit_box, self, "exit_coordinate_scaling",
+            "Coordinate scaling", tooltip="exit_coordinate_scaling",
+            labelWidth=250, valueType=float, orientation="horizontal",
+        )
+        gui.comboBox(
+            exit_box, self, "exit_invert_surface",
+            label="Invert surface", labelWidth=250, items=["No", "Yes"],
+            sendSelectedValue=False, orientation="horizontal",
+            tooltip="exit_invert_surface",
         )
 
         oasysgui.lineEdit(
@@ -425,37 +471,33 @@ class OWMeshRefractor(OWOpticalElement):
 
     def view_entrance_surface_data_file(self):
         try:
-            dialog = ShowSurfaceErrorDataFileDialog(
-                parent=self, file_name=self.entrance_surface_data_file
+            self._view_transformed_surface(
+                "entrance", ShowSurfaceErrorDataFileDialog
             )
-            dialog.show()
         except Exception as exception:
             self.prompt_exception(exception)
 
     def view_entrance_image_data_file(self):
         try:
-            dialog = ShowImageErrorDataFileDialog(
-                parent=self, file_name=self.entrance_surface_data_file
+            self._view_transformed_surface(
+                "entrance", ShowImageErrorDataFileDialog
             )
-            dialog.show()
         except Exception as exception:
             self.prompt_exception(exception)
 
     def view_exit_surface_data_file(self):
         try:
-            dialog = ShowSurfaceErrorDataFileDialog(
-                parent=self, file_name=self.exit_surface_data_file
+            self._view_transformed_surface(
+                "exit", ShowSurfaceErrorDataFileDialog
             )
-            dialog.show()
         except Exception as exception:
             self.prompt_exception(exception)
 
     def view_exit_image_data_file(self):
         try:
-            dialog = ShowImageErrorDataFileDialog(
-                parent=self, file_name=self.exit_surface_data_file
+            self._view_transformed_surface(
+                "exit", ShowImageErrorDataFileDialog
             )
-            dialog.show()
         except Exception as exception:
             self.prompt_exception(exception)
 
@@ -532,6 +574,12 @@ class OWMeshRefractor(OWOpticalElement):
             attenuation_coefficient=self.attenuation_coefficient,
             dabax=dabax,
             shift_thickness_to_zero=self.shift_thickness_to_zero == 1,
+            entrance_thickness_scaling=self.entrance_thickness_scaling,
+            entrance_coordinate_scaling=self.entrance_coordinate_scaling,
+            entrance_invert_surface=self.entrance_invert_surface == 1,
+            exit_thickness_scaling=self.exit_thickness_scaling,
+            exit_coordinate_scaling=self.exit_coordinate_scaling,
+            exit_invert_surface=self.exit_invert_surface == 1,
         )
 
     def get_beamline_element_instance(self):
@@ -539,6 +587,12 @@ class OWMeshRefractor(OWOpticalElement):
 
     def check_data(self):
         congruence.checkPositiveNumber(self.thickness, "Reference-plane thickness")
+        congruence.checkStrictlyPositiveNumber(
+            self.entrance_coordinate_scaling, "Entrance coordinate scaling"
+        )
+        congruence.checkStrictlyPositiveNumber(
+            self.exit_coordinate_scaling, "Exit coordinate scaling"
+        )
         for file_name in (
             self.entrance_surface_data_file,
             self.exit_surface_data_file,
@@ -598,6 +652,49 @@ class OWMeshRefractor(OWOpticalElement):
             zz=None,
             surface_data_file=file_name,
         )
+
+    def _view_transformed_surface(self, side, dialog_class):
+        file_name = (
+            self.entrance_surface_data_file
+            if side == "entrance"
+            else self.exit_surface_data_file
+        )
+        if self._is_plane(file_name):
+            raise ValueError(f"No {side} surface file specified.")
+
+        kwargs = {
+            "entrance_surface": self._surface_from_file(file_name)
+            if side == "entrance" else None,
+            "exit_surface": self._surface_from_file(file_name)
+            if side == "exit" else None,
+            "entrance_thickness_scaling": self.entrance_thickness_scaling,
+            "entrance_coordinate_scaling": self.entrance_coordinate_scaling,
+            "entrance_invert_surface": self.entrance_invert_surface == 1,
+            "exit_thickness_scaling": self.exit_thickness_scaling,
+            "exit_coordinate_scaling": self.exit_coordinate_scaling,
+            "exit_invert_surface": self.exit_invert_surface == 1,
+        }
+        optical_element = S4MeshRefractor(**kwargs)
+        data = (
+            optical_element.get_entrance_surface_data()
+            if side == "entrance"
+            else optical_element.get_exit_surface_data()
+        )
+        self._show_surface_data(data, dialog_class)
+
+    def _show_surface_data(self, data, dialog_class):
+        temporary = tempfile.NamedTemporaryFile(suffix=".h5", delete=False)
+        temporary.close()
+        try:
+            write_surface_file(
+                data["profile"], data["x_axis"], data["y_axis"],
+                temporary.name, overwrite=True,
+            )
+            dialog = dialog_class(parent=self, file_name=temporary.name)
+        finally:
+            if os.path.exists(temporary.name):
+                os.remove(temporary.name)
+        dialog.show()
 
     @Inputs.prerefl_preprocessor_data
     def set_PreReflPreProcessorData(self, data):
