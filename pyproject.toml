@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "OASYS2-BARC-EXTENSIONS"
-version = "2026.07.22"
+version = "2026.11.24"
 description = "OASYS2 BARC extension widgets"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -36,7 +36,7 @@ dependencies = [
     "OASYS2-SRW>=1.0.15",
     "shadow4>=0.1.87",
     "barc4shadow>=2026.07.22",
-    "barc4beams>=2026.07.22",
+    "barc4beams>=2026.11.24",
 ]
 
 [project.urls]
