@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "OASYS2-BARC-EXTENSIONS"
-version = "2026.11.24"
+version = "2026.11.26"
 description = "OASYS2 BARC extension widgets"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -37,6 +37,7 @@ dependencies = [
     "shadow4>=0.1.87",
     "barc4shadow>=2026.07.22",
     "barc4beams>=2026.11.24",
+    "dabam2d>=2026.11.26",
 ]
 
 [project.urls]
@@ -49,6 +50,7 @@ BARC = "orangecontrib.barc"
 [project.entry-points."oasys2.widgets"]
 "BARC Shadow4" = "orangecontrib.barc.shadow4.widgets.extension"
 "BARC SRW" = "orangecontrib.barc.srw.widgets.extension"
+"DABAM2D" = "orangecontrib.barc.dabam2d.widgets.extension"
 
 [tool.setuptools]
 include-package-data = true
@@ -79,3 +81,4 @@ exclude = [
     "icons/*.jpg",
     "icons/*.svg",
 ]
+"orangecontrib.barc.dabam2d.widgets.extension" = ["icons/*.png"]
