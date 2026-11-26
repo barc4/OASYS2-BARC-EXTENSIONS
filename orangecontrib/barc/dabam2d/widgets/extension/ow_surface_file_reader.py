@@ -8,6 +8,7 @@ from AnyQt.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QFormLayout,
 from matplotlib.figure import Figure
 from orangewidget import gui
 from orangewidget.settings import Setting
+from orangewidget.widget import Output
 from silx.gui.colors import Colormap
 from silx.gui.plot import Plot2D
 
@@ -15,6 +16,7 @@ from dabam2d import io, processing
 from oasys2.canvas.util.canvas_util import add_widget_parameters_to_module
 from oasys2.widget import gui as oasysgui
 from oasys2.widget.gui import FigureCanvas3D
+from oasys2.widget.util.widget_objects import OasysSurfaceData, OasysThicknessErrorsData
 from oasys2.widget.widget import OWWidget
 from orangecontrib.shadow4.util.python_script import PythonScript
 
@@ -26,6 +28,10 @@ class OWDabam2DSurfaceFileReader(OWWidget):
     icon = "icons/raw.png"
     priority = 1
     keywords = ["dabam2d", "metrology", "height", "surface"]
+
+    class Outputs:
+        surface_data = Output("Surface Data", OasysSurfaceData, default=True, auto_summary=False)
+        thickness_errors_data = Output("Thickness Errors Data", OasysThicknessErrorsData, auto_summary=False)
 
     CONTROL_AREA_WIDTH = 370
     NUMBER_WIDTH = 90
@@ -96,7 +102,7 @@ class OWDabam2DSurfaceFileReader(OWWidget):
         self._form(output).addRow(
             "File path", self._path_field("output_path", self._update_script, self._select_output)
         )
-        self._save_button = gui.button(output, self, "Save as DABAM2D", callback=self.save_surface, autoDefault=False)
+        self._save_button = gui.button(output, self, "Save and Send", callback=self.save_surface, autoDefault=False)
 
         self._summary = QLabel("No surface loaded", self.controlArea)
         self.controlArea.layout().addWidget(self._summary)
@@ -315,7 +321,7 @@ class OWDabam2DSurfaceFileReader(OWWidget):
                 if not self.output_path.strip():
                     return
 
-            destination = self._output_file()
+            destination = self._output_file().absolute()
             self.output_path = str(destination)
             self._update_script()
             try:
@@ -328,7 +334,14 @@ class OWDabam2DSurfaceFileReader(OWWidget):
                 if answer != QMessageBox.Yes:
                     return
                 io.write_height_profile(destination, surface, overwrite=True)
-            self.setStatusMessage(f"Saved {destination}")
+            path = str(destination)
+            self.Outputs.surface_data.send(
+                OasysSurfaceData(xx=surface["x"], yy=surface["y"], zz=surface["z"], surface_data_file=path)
+            )
+            self.Outputs.thickness_errors_data.send(
+                OasysThicknessErrorsData(thickness_error_profile_data_files=[path])
+            )
+            self.setStatusMessage("Saved and sent")
         except Exception as error:
             self._show_error(error)
 
