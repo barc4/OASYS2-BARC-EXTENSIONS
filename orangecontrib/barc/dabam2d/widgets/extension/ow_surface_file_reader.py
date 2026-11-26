@@ -20,6 +20,8 @@ from oasys2.widget.util.widget_objects import OasysSurfaceData, OasysThicknessEr
 from oasys2.widget.widget import OWWidget
 from orangecontrib.shadow4.util.python_script import PythonScript
 
+from ...utils.surface_recipe import Dabam2DSurfaceData, Operation, SurfaceRecipe
+
 
 class OWDabam2DSurfaceFileReader(OWWidget):
     name = "Surface File Reader"
@@ -205,21 +207,20 @@ class OWDabam2DSurfaceFileReader(OWWidget):
             self._script.set_code("# Select a metrology file to generate the script.\n")
             return
 
-        path = str(Path(self.file_path).expanduser().absolute())
-        lines = [
-            "from dabam2d import io, processing, viz",
-            "",
-            f"surface = io.read_height_profile({path!r}, "
-            f"axes_scale={self.axes_scale!r}, height_scale={self.height_scale!r})",
-        ]
-        for operation, arguments in self._operations():
-            call_args = "".join(f", {key}={value!r}" for key, value in arguments.items())
-            lines.append(f"surface = processing.{operation.__name__}(surface{call_args})")
-        if self.output_path.strip():
-            output = str(self._output_file().absolute())
-            lines.append(f"io.write_height_profile({output!r}, surface, overwrite=True)")
-        lines.extend(("", "viz.plot_height_profile(surface, aspect_ratio=False)", "viz.show()"))
-        self._script.set_code("\n".join(lines) + "\n")
+        output = str(self._output_file().absolute()) if self.output_path.strip() else None
+        self._script.set_code(self._recipe(output).python_script())
+
+    def _recipe(self, output_path):
+        return SurfaceRecipe(
+            source_path=str(Path(self.file_path).expanduser().absolute()),
+            axes_scale=self.axes_scale,
+            height_scale=self.height_scale,
+            operations=tuple(
+                Operation(operation.__name__, tuple(arguments.items()))
+                for operation, arguments in self._operations()
+            ),
+            output_path=output_path,
+        )
 
     def load_surface(self):
         self._load_surface()
@@ -336,7 +337,10 @@ class OWDabam2DSurfaceFileReader(OWWidget):
                 io.write_height_profile(destination, surface, overwrite=True)
             path = str(destination)
             self.Outputs.surface_data.send(
-                OasysSurfaceData(xx=surface["x"], yy=surface["y"], zz=surface["z"], surface_data_file=path)
+                Dabam2DSurfaceData(
+                    xx=surface["x"], yy=surface["y"], zz=surface["z"], surface_data_file=path,
+                    recipe=self._recipe(path),
+                )
             )
             self.Outputs.thickness_errors_data.send(
                 OasysThicknessErrorsData(thickness_error_profile_data_files=[path])
